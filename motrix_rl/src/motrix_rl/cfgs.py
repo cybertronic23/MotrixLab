@@ -303,19 +303,26 @@ class navigation:
         policy_hidden_layer_sizes: tuple[int, ...] = (256, 128, 64)
         value_hidden_layer_sizes: tuple[int, ...] = (256, 128, 64)
 
-@registry.envcfg("vbot_navigation_stairs")
-@dataclass
-class VBotStairsEnvCfg(VBotEnvCfg):
-    """VBot在楼梯地形上的导航配置,继承flat配置
-
-    """
-    model_file: str = os.path.dirname(__file__) + "/xmls/scene_stairs.xml"
-    map_episode_seconds: float = 20.0
-    max_episode_steps: int = 2000
-
+    @rlcfg("vbot_navigation_section001")
     @dataclass
-    class ControlConfig:
-        action_scale = 0.25
+    class VBotNavigationSection001PPO(PPOCfg):
+        """
+        VBot Navigation Section001 RL config
+        """
 
-    control_config: ControlConfig = field(default_factory=ControlConfig)    
+        seed: int = 42
+        share_policy_value_features: bool = False
+        max_env_steps: int = 1024 * 60_000
+        num_envs: int = 2048
+
+        # Override PPO configuration
+        rollouts: int = 24
+        policy_hidden_layer_sizes: tuple[int, ...] = (256, 128, 64)
+        value_hidden_layer_sizes: tuple[int, ...] = (256, 128, 64)
+        learning_epochs: int = 5
+        mini_batches: int = 3
+        learning_rate: float = 3e-4
+
+
+    
     

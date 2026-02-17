@@ -92,7 +92,7 @@ class RewardConfig:
         }
     )
 
-@registry.envcfg("anymal_c_navigation_flat")
+@registry.envcfg("anymal_c_navigation_flat_v2")
 @dataclass
 class AnymalCEnvCfg(EnvCfg):
     model_file: str = model_file

@@ -275,7 +275,7 @@ class manipulation:
 
 
 class navigation:
-    @rlcfg("anymal_c_navigation_flat")
+    @rlcfg("anymal_c_navigation_flat_v2")
     @dataclass
     class AnymalCPPOConfig(PPOCfg):
         # ===== Basic Training Parameters =====

@@ -23,7 +23,7 @@ from motrix_envs.np.env import NpEnv, NpEnvState
 
 from .cfg import AnymalCEnvCfg
 
-@registry.env("anymal_c_navigation_flat","np")
+@registry.env("anymal_c_navigation_flat_v2","np")
 class AnymalCEnv(NpEnv):
     _cfg: AnymalCEnvCfg
 

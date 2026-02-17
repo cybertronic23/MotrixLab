@@ -487,7 +487,7 @@ class VBotSection001Env(NpEnv):
         cfg = self._cfg
         
         # 计算总奖励
-        reward = np.array([0])
+        reward = np.zeros(data.shape[0], dtype=np.float32)
         
         return reward
 

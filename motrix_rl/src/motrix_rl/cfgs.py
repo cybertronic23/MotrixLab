@@ -302,3 +302,20 @@ class navigation:
         # Medium-sized network (default configuration, suitable for most tasks)
         policy_hidden_layer_sizes: tuple[int, ...] = (256, 128, 64)
         value_hidden_layer_sizes: tuple[int, ...] = (256, 128, 64)
+
+@registry.envcfg("vbot_navigation_stairs")
+@dataclass
+class VBotStairsEnvCfg(VBotEnvCfg):
+    """VBot在楼梯地形上的导航配置,继承flat配置
+
+    """
+    model_file: str = os.path.dirname(__file__) + "/xmls/scene_stairs.xml"
+    map_episode_seconds: float = 20.0
+    max_episode_steps: int = 2000
+
+    @dataclass
+    class ControlConfig:
+        action_scale = 0.25
+
+    control_config: ControlConfig = field(default_factory=ControlConfig)    
+    

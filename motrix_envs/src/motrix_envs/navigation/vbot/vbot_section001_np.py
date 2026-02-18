@@ -259,7 +259,7 @@ class VBotSection001Env(NpEnv):
         return heading
     
     def _normalize_quaternion_dofs(self, all_dof_pos: np.ndarray):
-        """归一化 dof_pos 中所有四元数字段，防止 set_dof_pos 因无效四元数 panic"""
+        """归一化 dof_pos 中所有四元数字段，处理 NaN 和全零，防止 set_dof_pos panic"""
         # base 四元数 (DOF 6-9)
         quat_ranges = [(self._base_quat_start, self._base_quat_end)]
         # 箭头四元数（如果存在）
@@ -269,14 +269,18 @@ class VBotSection001Env(NpEnv):
         for qs, qe in quat_ranges:
             if qe <= all_dof_pos.shape[1]:
                 quats = all_dof_pos[:, qs:qe].copy()  # [num_envs, 4]
+                # 先将 NaN 替换为 0，这样后续范数计算不会被 NaN 污染
+                has_nan = np.isnan(quats).any(axis=1)  # [num_envs]
+                quats[has_nan] = 0.0
+                # 计算范数
                 norms = np.linalg.norm(quats, axis=1, keepdims=True)  # [num_envs, 1]
-                # 用 safe_norms 避免除零，范数为0时除以1（结果仍是0，后面会被替换）
-                safe_norms = np.maximum(norms, 1e-8)
+                # 无效 = 原始就有 NaN 或 范数接近 0
+                invalid_mask = has_nan | (norms.reshape(-1) < 1e-6)  # [num_envs]
+                # 安全除法：无效行除以 1（避免除零），有效行正常归一化
+                safe_norms = np.where(norms > 1e-6, norms, 1.0)
                 quats = quats / safe_norms
-                # 范数接近 0 的行替换为单位四元数 [0, 0, 0, 1]
-                invalid_mask = (norms < 1e-6).reshape(-1)  # [num_envs]
-                if np.any(invalid_mask):
-                    quats[invalid_mask] = np.array([0.0, 0.0, 0.0, 1.0], dtype=quats.dtype)
+                # 无效行设为单位四元数
+                quats[invalid_mask] = np.array([0.0, 0.0, 0.0, 1.0], dtype=quats.dtype)
                 all_dof_pos[:, qs:qe] = quats
         return all_dof_pos
 
@@ -555,31 +559,8 @@ class VBotSection001Env(NpEnv):
         
         pose_commands = np.concatenate([target_positions, target_headings], axis=1)
         
-        # 归一化base的四元数（DOF 6-9）
-        for env_idx in range(num_envs):
-            quat = dof_pos[env_idx, self._base_quat_start:self._base_quat_end]
-            quat_norm = np.linalg.norm(quat)
-            if quat_norm > 1e-6:
-                dof_pos[env_idx, self._base_quat_start:self._base_quat_end] = quat / quat_norm
-            else:
-                dof_pos[env_idx, self._base_quat_start:self._base_quat_end] = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
-            
-            # 归一化箭头的四元数（如果箭头body存在）
-            if self._robot_arrow_body is not None:
-                robot_arrow_quat = dof_pos[env_idx, self._robot_arrow_dof_start+3:self._robot_arrow_dof_end]
-                quat_norm = np.linalg.norm(robot_arrow_quat)
-                if quat_norm > 1e-6:
-                    dof_pos[env_idx, self._robot_arrow_dof_start+3:self._robot_arrow_dof_end] = robot_arrow_quat / quat_norm
-                else:
-                    dof_pos[env_idx, self._robot_arrow_dof_start+3:self._robot_arrow_dof_end] = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
-                
-                desired_arrow_quat = dof_pos[env_idx, self._desired_arrow_dof_start+3:self._desired_arrow_dof_end]
-                quat_norm = np.linalg.norm(desired_arrow_quat)
-                if quat_norm > 1e-6:
-                    dof_pos[env_idx, self._desired_arrow_dof_start+3:self._desired_arrow_dof_end] = desired_arrow_quat / quat_norm
-                else:
-                    dof_pos[env_idx, self._desired_arrow_dof_start+3:self._desired_arrow_dof_end] = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
-        
+        dof_pos = self._normalize_quaternion_dofs(dof_pos)
+
         data.reset(self._model)
         data.set_dof_vel(dof_vel)
         data.set_dof_pos(dof_pos, self._model)

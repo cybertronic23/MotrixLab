@@ -10,7 +10,7 @@ authors = [{ name = "Motphys", email = "developers@motphys.com" }]
 requires-python = "==3.10.*"
 readme = "README.md"
 license = "Apache-2.0"
-dependencies = ["gymnasium===1.1.1", "python-abc>=0.2.0", "motrix-envs"]
+dependencies = ["gymnasium===1.1.1", "python-abc>=0.2.0", "motrix-envs", "absl-py"]
 
 [project.optional-dependencies]
 skrl-jax = [

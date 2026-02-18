@@ -268,12 +268,15 @@ class VBotSection001Env(NpEnv):
             quat_ranges.append((self._desired_arrow_dof_start + 3, self._desired_arrow_dof_end))
         for qs, qe in quat_ranges:
             if qe <= all_dof_pos.shape[1]:
-                quats = all_dof_pos[:, qs:qe]  # [num_envs, 4]
-                norms = np.linalg.norm(quats, axis=1, keepdims=True)
-                # 范数为 0 的替换为单位四元数
-                invalid = (norms < 1e-6).squeeze()
-                quats = np.where(norms > 1e-6, quats / norms, 0.0)
-                quats[invalid] = [0.0, 0.0, 0.0, 1.0]
+                quats = all_dof_pos[:, qs:qe].copy()  # [num_envs, 4]
+                norms = np.linalg.norm(quats, axis=1, keepdims=True)  # [num_envs, 1]
+                # 用 safe_norms 避免除零，范数为0时除以1（结果仍是0，后面会被替换）
+                safe_norms = np.maximum(norms, 1e-8)
+                quats = quats / safe_norms
+                # 范数接近 0 的行替换为单位四元数 [0, 0, 0, 1]
+                invalid_mask = (norms < 1e-6).reshape(-1)  # [num_envs]
+                if np.any(invalid_mask):
+                    quats[invalid_mask] = np.array([0.0, 0.0, 0.0, 1.0], dtype=quats.dtype)
                 all_dof_pos[:, qs:qe] = quats
         return all_dof_pos
 

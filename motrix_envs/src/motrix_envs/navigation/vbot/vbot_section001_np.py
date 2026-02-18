@@ -258,6 +258,25 @@ class VBotSection001Env(NpEnv):
         heading = np.arctan2(siny_cosp, cosy_cosp)
         return heading
     
+    def _normalize_quaternion_dofs(self, all_dof_pos: np.ndarray):
+        """归一化 dof_pos 中所有四元数字段，防止 set_dof_pos 因无效四元数 panic"""
+        # base 四元数 (DOF 6-9)
+        quat_ranges = [(self._base_quat_start, self._base_quat_end)]
+        # 箭头四元数（如果存在）
+        if self._robot_arrow_body is not None:
+            quat_ranges.append((self._robot_arrow_dof_start + 3, self._robot_arrow_dof_end))
+            quat_ranges.append((self._desired_arrow_dof_start + 3, self._desired_arrow_dof_end))
+        for qs, qe in quat_ranges:
+            if qe <= all_dof_pos.shape[1]:
+                quats = all_dof_pos[:, qs:qe]  # [num_envs, 4]
+                norms = np.linalg.norm(quats, axis=1, keepdims=True)
+                # 范数为 0 的替换为单位四元数
+                invalid = (norms < 1e-6).squeeze()
+                quats = np.where(norms > 1e-6, quats / norms, 0.0)
+                quats[invalid] = [0.0, 0.0, 0.0, 1.0]
+                all_dof_pos[:, qs:qe] = quats
+        return all_dof_pos
+
     def _update_target_marker(self, data: mtx.SceneData, pose_commands: np.ndarray):
         """更新目标位置标记的位置和朝向"""
         num_envs = data.shape[0]
@@ -271,6 +290,7 @@ class VBotSection001Env(NpEnv):
                 target_x, target_y, target_yaw
             ]
         
+        all_dof_pos = self._normalize_quaternion_dofs(all_dof_pos)
         data.set_dof_pos(all_dof_pos, self._model)
         self._model.forward_kinematic(data)
     
@@ -321,6 +341,7 @@ class VBotSection001Env(NpEnv):
                 desired_arrow_pos, desired_arrow_quat
             ])
         
+        all_dof_pos = self._normalize_quaternion_dofs(all_dof_pos)
         data.set_dof_pos(all_dof_pos, self._model)
         self._model.forward_kinematic(data)
     

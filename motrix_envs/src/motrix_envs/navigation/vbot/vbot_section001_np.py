@@ -403,10 +403,10 @@ class VBotSection001Env(NpEnv):
         heading_diff = np.where(heading_diff < -np.pi, heading_diff + 2*np.pi, heading_diff)
         
         # 达到判定（只看位置，与奖励计算保持一致）
-        position_threshold = 0.3
+        position_threshold = 1.0  # 1m 半径，与目标圆圈视觉范围匹配
         reached_all = distance_to_target < position_threshold  # 楼梯任务：只要到达位置即可
         
-        # 计算期望速度命令（与平地navigation一致，简单P控制器）
+        # 计算期望速度命令：到达后命令为零（要求停止）
         desired_vel_xy = np.clip(position_error * 1.0, -1.0, 1.0)
         desired_vel_xy = np.where(reached_all[:, np.newaxis], 0.0, desired_vel_xy)
         
@@ -580,7 +580,7 @@ class VBotSection001Env(NpEnv):
         position_error = target_position - robot_position
         distance_to_target = np.linalg.norm(position_error, axis=1)
 
-        position_threshold = 0.3
+        position_threshold = 1.0  # 与 update_state 保持一致
         reached_position = distance_to_target < position_threshold
         reached_all = reached_position  # 楼梯任务：到达位置即可
 
@@ -621,18 +621,31 @@ class VBotSection001Env(NpEnv):
 
         # ===== 到达后停止奖励 =====
         speed_xy = np.linalg.norm(base_lin_vel[:, :2], axis=1)
+        speed_total = np.sqrt(speed_xy**2 + base_lin_vel[:, 2]**2)
         zero_ang_mask = np.abs(gyro[:, 2]) < 0.05
-        zero_ang_bonus = np.where(np.logical_and(reached_all, zero_ang_mask), 6.0, 0.0)
-        stop_base = 2 * (0.8 * np.exp(-((speed_xy / 0.2)**2)) + 1.2 * np.exp(-((np.abs(gyro[:, 2]) / 0.1)**4)))
-        stop_bonus = np.where(reached_all, stop_base + zero_ang_bonus, 0.0)
+        zero_vel_mask = speed_xy < 0.1
+        # 完全停稳奖励：速度和角速度都接近零
+        fully_stopped_bonus = np.where(
+            np.logical_and(reached_all, np.logical_and(zero_ang_mask, zero_vel_mask)),
+            10.0, 0.0
+        )
+        # 基础停止奖励：速度越小奖励越高
+        stop_base = 3 * (0.8 * np.exp(-((speed_xy / 0.15)**2)) + 1.2 * np.exp(-((np.abs(gyro[:, 2]) / 0.08)**4)))
+        stop_bonus = np.where(reached_all, stop_base + fully_stopped_bonus, 0.0)
+        # 持续停留奖励：每步在目标区域内就给奖励
+        stay_in_zone_reward = np.where(reached_all, 3.0, 0.0)
+        # 到达后显式速度惩罚：强烈的「刹车」信号
+        reached_speed_penalty = np.where(reached_all, 5.0 * np.square(speed_total), 0.0)
 
         # ===== 综合奖励 =====
         reward = np.where(
             reached_all,
-            # 到达后：停止奖励 + 惩罚
+            # 到达后：停止奖励 + 停留奖励 - 速度惩罚 - 稳定性惩罚
             (
                 stop_bonus
                 + arrival_bonus
+                + stay_in_zone_reward
+                - reached_speed_penalty
                 - 2.0 * lin_vel_z_penalty
                 - 0.05 * ang_vel_xy_penalty
                 - 0.5 * orientation_penalty

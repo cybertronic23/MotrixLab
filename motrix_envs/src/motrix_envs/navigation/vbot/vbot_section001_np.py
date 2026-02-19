@@ -402,13 +402,24 @@ class VBotSection001Env(NpEnv):
         heading_diff = np.where(heading_diff > np.pi, heading_diff - 2*np.pi, heading_diff)
         heading_diff = np.where(heading_diff < -np.pi, heading_diff + 2*np.pi, heading_diff)
         
-        # 达到判定（只看位置，与奖励计算保持一致）
-        position_threshold = 1.0  # 1m 半径，与目标圆圈视觉范围匹配
-        reached_all = distance_to_target < position_threshold  # 楼梯任务：只要到达位置即可
+        # 达到判定：粘性标记，一旦进入过目标区域就永远视为"已到达"
+        position_threshold = 1.0  # 1m 半径
+        currently_in_zone = distance_to_target < position_threshold
+        state.info["ever_reached"] = state.info.get("ever_reached", np.zeros(self._num_envs, dtype=bool))
+        state.info["ever_reached"] = np.logical_or(state.info["ever_reached"], currently_in_zone)
+        reached_all = state.info["ever_reached"]  # 粘性：一旦到达过，永远为 True
         
-        # 计算期望速度命令：到达后命令为零（要求停止）
+        # 减速区（1m-3m）：逐渐降低速度命令，让机器狗提前刹车
+        decel_outer = 3.0  # 减速区外径
+        decel_inner = position_threshold  # 减速区内径 = 到达半径
+        # 速度缩放因子：3m外=1.0, 1m处=0.0, 线性插值
+        speed_scale = np.clip((distance_to_target - decel_inner) / (decel_outer - decel_inner), 0.0, 1.0)
+        # 已到达（粘性）的环境，速度命令强制为0
+        speed_scale = np.where(reached_all, 0.0, speed_scale)
+        
+        # 计算期望速度命令：在减速区内逐渐趋近0
         desired_vel_xy = np.clip(position_error * 1.0, -1.0, 1.0)
-        desired_vel_xy = np.where(reached_all[:, np.newaxis], 0.0, desired_vel_xy)
+        desired_vel_xy = desired_vel_xy * speed_scale[:, np.newaxis]
         
         # 角速度命令：跟踪运动方向（从当前位置指向目标）
         # 与vbot_np保持一致的增益和上限，确保转向足够快
@@ -420,6 +431,8 @@ class VBotSection001Env(NpEnv):
         deadband_yaw = np.deg2rad(8)
         desired_yaw_rate = np.where(np.abs(heading_to_movement) < deadband_yaw, 0.0, desired_yaw_rate)
         desired_yaw_rate = np.where(reached_all, 0.0, desired_yaw_rate)
+        # 减速区内也缩放角速度
+        desired_yaw_rate = desired_yaw_rate * speed_scale
         
         if desired_yaw_rate.ndim > 1:
             desired_yaw_rate = desired_yaw_rate.flatten()
@@ -580,14 +593,16 @@ class VBotSection001Env(NpEnv):
         position_error = target_position - robot_position
         distance_to_target = np.linalg.norm(position_error, axis=1)
 
-        position_threshold = 1.0  # 与 update_state 保持一致
-        reached_position = distance_to_target < position_threshold
-        reached_all = reached_position  # 楼梯任务：到达位置即可
+        position_threshold = 1.0
+        currently_in_zone = distance_to_target < position_threshold
+        # 粘性到达标记：与 update_state 保持一致
+        info["ever_reached"] = info.get("ever_reached", np.zeros(self._num_envs, dtype=bool))
+        info["ever_reached"] = np.logical_or(info["ever_reached"], currently_in_zone)
+        reached_all = info["ever_reached"]  # 一旦进过就永远为 True
 
         # 首次到达一次性奖励
-        info["ever_reached"] = info.get("ever_reached", np.zeros(self._num_envs, dtype=bool))
-        first_time_reach = np.logical_and(reached_all, ~info["ever_reached"])
-        info["ever_reached"] = np.logical_or(info["ever_reached"], reached_all)
+        first_time_reach = np.logical_and(currently_in_zone, ~info.get("first_reach_given", np.zeros(self._num_envs, dtype=bool)))
+        info["first_reach_given"] = np.logical_or(info.get("first_reach_given", np.zeros(self._num_envs, dtype=bool)), currently_in_zone)
         arrival_bonus = np.where(first_time_reach, 10.0, 0.0)
 
         # 距离接近奖励
@@ -741,12 +756,18 @@ class VBotSection001Env(NpEnv):
         position_error = target_position - robot_position
         distance_to_target = np.linalg.norm(position_error, axis=1)
         
-        position_threshold = 0.3
-        reached_all = distance_to_target < position_threshold  # 楼梯任务：只看位置
+        position_threshold = 1.0  # 与 update_state 保持一致
+        reached_all = distance_to_target < position_threshold
+        
+        # 减速区逻辑（与 update_state 一致）
+        decel_outer = 3.0
+        decel_inner = position_threshold
+        speed_scale = np.clip((distance_to_target - decel_inner) / (decel_outer - decel_inner), 0.0, 1.0)
+        speed_scale = np.where(reached_all, 0.0, speed_scale)
         
         # 计算期望速度
         desired_vel_xy = np.clip(position_error * 1.0, -1.0, 1.0)
-        desired_vel_xy = np.where(reached_all[:, np.newaxis], 0.0, desired_vel_xy)
+        desired_vel_xy = desired_vel_xy * speed_scale[:, np.newaxis]
         
         base_lin_vel_xy = base_lin_vel[:, :2]
         self._update_heading_arrows(data, root_pos, desired_vel_xy, base_lin_vel_xy)
@@ -755,20 +776,17 @@ class VBotSection001Env(NpEnv):
         heading_diff = np.where(heading_diff > np.pi, heading_diff - 2*np.pi, heading_diff)
         heading_diff = np.where(heading_diff < -np.pi, heading_diff + 2*np.pi, heading_diff)
         
-        # ===== 与reset一致：角速度跟踪运动方向 =====
-        # 计算期望的运动方向（从update_state中复制）
+        # 角速度命令
         desired_heading = np.arctan2(position_error[:, 1], position_error[:, 0])
         heading_to_movement = desired_heading - robot_heading
         heading_to_movement = np.where(heading_to_movement > np.pi, heading_to_movement - 2*np.pi, heading_to_movement)
         heading_to_movement = np.where(heading_to_movement < -np.pi, heading_to_movement + 2*np.pi, heading_to_movement)
         desired_yaw_rate = np.clip(heading_to_movement * 1.0, -1.0, 1.0)
         
-        # 添加死区，与update_state保持一致
         deadband_yaw = np.deg2rad(8)
         desired_yaw_rate = np.where(np.abs(heading_to_movement) < deadband_yaw, 0.0, desired_yaw_rate)
-        
         desired_yaw_rate = np.where(reached_all, 0.0, desired_yaw_rate)
-        desired_vel_xy = np.where(reached_all[:, np.newaxis], 0.0, desired_vel_xy)
+        desired_yaw_rate = desired_yaw_rate * speed_scale
         
         if desired_yaw_rate.ndim > 1:
             desired_yaw_rate = desired_yaw_rate.flatten()
@@ -824,6 +842,7 @@ class VBotSection001Env(NpEnv):
             "current_actions": np.zeros((num_envs, self._num_action), dtype=np.float32),
             "filtered_actions": np.zeros((num_envs, self._num_action), dtype=np.float32),
             "ever_reached": np.zeros(num_envs, dtype=bool),
+            "first_reach_given": np.zeros(num_envs, dtype=bool),
             "min_distance": distance_to_target.copy(),  # 统一使用min_distance机制
             # 新增：与locomotion一致的字段
             "last_dof_vel": np.zeros((num_envs, self._num_action), dtype=np.float32),  # 上一步关节速度

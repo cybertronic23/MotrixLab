@@ -249,8 +249,8 @@ class VBotSection001Env(NpEnv):
         current_vel = self.get_dof_vel(data)  # [num_envs, 12]
         
         # PD控制器：tau = kp * (target - current) - kv * vel
-        kp = 80.0   # 位置增益
-        kv = 6.0    # 速度增益
+        kp = 80.0   # 位置增益（与 Go1 locomotion 一致）
+        kv = 1.0    # 速度增益（Go1 使用 1.0，之前 6.0 过度阻尼导致弱势腿无法恢复）
         
         pos_error = target_pos - current_pos
         torques = kp * pos_error - kv * current_vel
@@ -652,6 +652,23 @@ class VBotSection001Env(NpEnv):
         action_diff = info["current_actions"] - info["last_actions"]
         action_rate_penalty = np.sum(np.square(action_diff), axis=1)
 
+        # 关节偏差惩罚：鼓励四腿均匀使用，防止一条腿长期偏离默认位置
+        joint_pos = self.get_dof_pos(data)
+        joint_deviation = np.square(joint_pos - self.default_angles)
+        # 按腿分组计算偏差 [FR(0:3), FL(3:6), RR(6:9), RL(9:12)]
+        leg_deviations = np.array([
+            np.sum(joint_deviation[:, 0:3], axis=1),  # FR
+            np.sum(joint_deviation[:, 3:6], axis=1),  # FL
+            np.sum(joint_deviation[:, 6:9], axis=1),  # RR
+            np.sum(joint_deviation[:, 9:12], axis=1), # RL
+        ]).T  # [num_envs, 4]
+        # 惩罚偏差最大和最小腿之间的不对称性
+        max_leg_dev = np.max(leg_deviations, axis=1)
+        min_leg_dev = np.min(leg_deviations, axis=1)
+        leg_asymmetry_penalty = max_leg_dev - min_leg_dev
+        # 总关节偏差惩罚
+        dof_pos_penalty = np.sum(joint_deviation, axis=1)
+
         # ===== 到达后停止奖励 =====
         speed_xy = np.linalg.norm(base_lin_vel[:, :2], axis=1)
         speed_total = np.sqrt(speed_xy**2 + base_lin_vel[:, 2]**2)
@@ -684,6 +701,8 @@ class VBotSection001Env(NpEnv):
                 - 0.5 * orientation_penalty
                 - 1e-5 * torque_penalty
                 - 0.001 * action_rate_penalty
+                - 0.1 * leg_asymmetry_penalty
+                - 0.01 * dof_pos_penalty
                 + termination_penalty
             ),
             # 未到达：正常奖励
@@ -696,6 +715,8 @@ class VBotSection001Env(NpEnv):
                 - 0.5 * orientation_penalty
                 - 1e-5 * torque_penalty
                 - 0.001 * action_rate_penalty
+                - 0.1 * leg_asymmetry_penalty
+                - 0.01 * dof_pos_penalty
                 + termination_penalty
             ),
         )

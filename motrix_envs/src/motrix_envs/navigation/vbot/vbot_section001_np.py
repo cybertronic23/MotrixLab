@@ -215,9 +215,27 @@ class VBotSection001Env(NpEnv):
                 (1.0 - self.action_filter_alpha) * state.info["filtered_actions"]
             )
         
-        state.info["current_actions"] = state.info["filtered_actions"]
+        filtered = state.info["filtered_actions"].copy()
+        
+        # ===== 到达目标后动作衰减：直接从控制层面让机器狗停下 =====
+        ever_reached = state.info.get("ever_reached", np.zeros(self._num_envs, dtype=bool))
+        if np.any(ever_reached):
+            # 已到达步数计数器
+            if "reached_steps" not in state.info:
+                state.info["reached_steps"] = np.zeros(self._num_envs, dtype=np.float32)
+            state.info["reached_steps"] = np.where(
+                ever_reached,
+                state.info["reached_steps"] + 1.0,
+                0.0
+            )
+            # 衰减因子：30步内线性衰减到0（0.3秒@100Hz）
+            damping_factor = np.clip(1.0 - state.info["reached_steps"] / 30.0, 0.0, 1.0)
+            # 对已到达的环境衰减动作，actions→0 使 PD 控制器驱动关节回默认位置
+            filtered = filtered * damping_factor[:, np.newaxis]
+        
+        state.info["current_actions"] = filtered
 
-        state.data.actuator_ctrls = self._compute_torques(state.info["filtered_actions"], state.data)
+        state.data.actuator_ctrls = self._compute_torques(filtered, state.data)
         
         return state
     
@@ -843,6 +861,7 @@ class VBotSection001Env(NpEnv):
             "filtered_actions": np.zeros((num_envs, self._num_action), dtype=np.float32),
             "ever_reached": np.zeros(num_envs, dtype=bool),
             "first_reach_given": np.zeros(num_envs, dtype=bool),
+            "reached_steps": np.zeros(num_envs, dtype=np.float32),
             "min_distance": distance_to_target.copy(),  # 统一使用min_distance机制
             # 新增：与locomotion一致的字段
             "last_dof_vel": np.zeros((num_envs, self._num_action), dtype=np.float32),  # 上一步关节速度

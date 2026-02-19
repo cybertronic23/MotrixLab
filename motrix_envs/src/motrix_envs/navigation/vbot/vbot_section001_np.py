@@ -215,27 +215,9 @@ class VBotSection001Env(NpEnv):
                 (1.0 - self.action_filter_alpha) * state.info["filtered_actions"]
             )
         
-        filtered = state.info["filtered_actions"].copy()
-        
-        # ===== 到达目标后动作衰减：直接从控制层面让机器狗停下 =====
-        ever_reached = state.info.get("ever_reached", np.zeros(self._num_envs, dtype=bool))
-        if np.any(ever_reached):
-            # 已到达步数计数器
-            if "reached_steps" not in state.info:
-                state.info["reached_steps"] = np.zeros(self._num_envs, dtype=np.float32)
-            state.info["reached_steps"] = np.where(
-                ever_reached,
-                state.info["reached_steps"] + 1.0,
-                0.0
-            )
-            # 衰减因子：30步内线性衰减到0（0.3秒@100Hz）
-            damping_factor = np.clip(1.0 - state.info["reached_steps"] / 30.0, 0.0, 1.0)
-            # 对已到达的环境衰减动作，actions→0 使 PD 控制器驱动关节回默认位置
-            filtered = filtered * damping_factor[:, np.newaxis]
-        
-        state.info["current_actions"] = filtered
+        state.info["current_actions"] = state.info["filtered_actions"]
 
-        state.data.actuator_ctrls = self._compute_torques(filtered, state.data)
+        state.data.actuator_ctrls = self._compute_torques(state.info["filtered_actions"], state.data)
         
         return state
     
@@ -250,7 +232,7 @@ class VBotSection001Env(NpEnv):
         
         # PD控制器：tau = kp * (target - current) - kv * vel
         kp = 80.0   # 位置增益（与 Go1 locomotion 一致）
-        kv = 1.0    # 速度增益（Go1 使用 1.0，之前 6.0 过度阻尼导致弱势腿无法恢复）
+        kv = 2.0    # 速度增益（1.0太低不稳、6.0太高过阻尼，2.0为平衡点）
         
         pos_error = target_pos - current_pos
         torques = kp * pos_error - kv * current_vel
@@ -420,22 +402,17 @@ class VBotSection001Env(NpEnv):
         heading_diff = np.where(heading_diff > np.pi, heading_diff - 2*np.pi, heading_diff)
         heading_diff = np.where(heading_diff < -np.pi, heading_diff + 2*np.pi, heading_diff)
         
-        # 达到判定：粘性标记，一旦进入过目标区域就永远视为"已到达"
-        position_threshold = 1.0  # 1m 半径
-        currently_in_zone = distance_to_target < position_threshold
-        state.info["ever_reached"] = state.info.get("ever_reached", np.zeros(self._num_envs, dtype=bool))
-        state.info["ever_reached"] = np.logical_or(state.info["ever_reached"], currently_in_zone)
-        reached_all = state.info["ever_reached"]  # 粘性：一旦到达过，永远为 True
+        # 达到判定：到达圆心（0.3m）才算到达
+        position_threshold = 0.3  # 0.3m 半径 = 圆心位置
+        reached_all = distance_to_target < position_threshold
         
-        # 减速区（1m-3m）：逐渐降低速度命令，让机器狗提前刹车
-        decel_outer = 3.0  # 减速区外径
-        decel_inner = position_threshold  # 减速区内径 = 到达半径
-        # 速度缩放因子：3m外=1.0, 1m处=0.0, 线性插值
+        # 减速区（0.3m-2m）：逐渐降低速度命令，让机器狗平缓减速
+        decel_outer = 2.0   # 减速区外径：2m开始减速
+        decel_inner = position_threshold  # 减速区内径 = 圆心半径0.3m
+        # 速度缩放因子：2m外=1.0, 0.3m处=0.0, 线性插值
         speed_scale = np.clip((distance_to_target - decel_inner) / (decel_outer - decel_inner), 0.0, 1.0)
-        # 已到达（粘性）的环境，速度命令强制为0
-        speed_scale = np.where(reached_all, 0.0, speed_scale)
         
-        # 计算期望速度命令：在减速区内逐渐趋近0
+        # 计算期望速度命令：在减速区内逐渐趋近0，到达圆心时为0
         desired_vel_xy = np.clip(position_error * 1.0, -1.0, 1.0)
         desired_vel_xy = desired_vel_xy * speed_scale[:, np.newaxis]
         
@@ -611,16 +588,12 @@ class VBotSection001Env(NpEnv):
         position_error = target_position - robot_position
         distance_to_target = np.linalg.norm(position_error, axis=1)
 
-        position_threshold = 1.0
-        currently_in_zone = distance_to_target < position_threshold
-        # 粘性到达标记：与 update_state 保持一致
-        info["ever_reached"] = info.get("ever_reached", np.zeros(self._num_envs, dtype=bool))
-        info["ever_reached"] = np.logical_or(info["ever_reached"], currently_in_zone)
-        reached_all = info["ever_reached"]  # 一旦进过就永远为 True
+        position_threshold = 0.3  # 到达圆心才停
+        reached_all = distance_to_target < position_threshold  # 实时判定，不使用粘性标记
 
         # 首次到达一次性奖励
-        first_time_reach = np.logical_and(currently_in_zone, ~info.get("first_reach_given", np.zeros(self._num_envs, dtype=bool)))
-        info["first_reach_given"] = np.logical_or(info.get("first_reach_given", np.zeros(self._num_envs, dtype=bool)), currently_in_zone)
+        first_time_reach = np.logical_and(reached_all, ~info.get("first_reach_given", np.zeros(self._num_envs, dtype=bool)))
+        info["first_reach_given"] = np.logical_or(info.get("first_reach_given", np.zeros(self._num_envs, dtype=bool)), reached_all)
         arrival_bonus = np.where(first_time_reach, 10.0, 0.0)
 
         # 距离接近奖励

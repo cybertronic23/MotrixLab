@@ -403,7 +403,7 @@ class VBotSection001Env(NpEnv):
         heading_diff = np.where(heading_diff < -np.pi, heading_diff + 2*np.pi, heading_diff)
         
         # 达到判定：到达圆心（0.3m）才算到达
-        position_threshold = 0.3  # 0.3m 半径 = 圆心位置
+        position_threshold = 0.3  # 0.3m 半径 = 圆圈半径
         reached_all = distance_to_target < position_threshold
         
         # 减速区（0.3m-2m）：逐渐降低速度命令，让机器狗平缓减速
@@ -449,6 +449,10 @@ class VBotSection001Env(NpEnv):
         heading_error_normalized = heading_diff / np.pi
         distance_normalized = np.clip(distance_to_target / 5.0, 0, 1)
         reached_flag = reached_all.astype(np.float32)
+        # 记录是否曾经进入过圆圈（用于“走出圆圈”惩罚）
+        if "ever_reached" not in state.info:
+            state.info["ever_reached"] = np.zeros(data.shape[0], dtype=bool)
+        state.info["ever_reached"] = np.logical_or(state.info["ever_reached"], reached_all)
         
         stop_ready = np.logical_and(
             reached_all,
@@ -589,7 +593,12 @@ class VBotSection001Env(NpEnv):
         distance_to_target = np.linalg.norm(position_error, axis=1)
 
         position_threshold = 0.3  # 到达圆心才停
-        reached_all = distance_to_target < position_threshold  # 实时判定，不使用粘性标记
+        reached_all = distance_to_target < position_threshold  # 实时判定
+
+        # 曾经是否进入过目标圆圈（来自状态缓存）
+        ever_reached = info.get("ever_reached", np.zeros(self._num_envs, dtype=bool))
+        # 走出圆圈：之前进去过，但当前不在圆圈内
+        left_zone = np.logical_and(ever_reached, ~reached_all)
 
         # 首次到达一次性奖励
         first_time_reach = np.logical_and(reached_all, ~info.get("first_reach_given", np.zeros(self._num_envs, dtype=bool)))
@@ -645,8 +654,8 @@ class VBotSection001Env(NpEnv):
         # ===== 到达后停止奖励 =====
         speed_xy = np.linalg.norm(base_lin_vel[:, :2], axis=1)
         speed_total = np.sqrt(speed_xy**2 + base_lin_vel[:, 2]**2)
-        zero_ang_mask = np.abs(gyro[:, 2]) < 0.05
-        zero_vel_mask = speed_xy < 0.1
+        zero_ang_mask = np.abs(gyro[:, 2]) < 0.03
+        zero_vel_mask = speed_xy < 0.05
         # 完全停稳奖励：速度和角速度都接近零
         fully_stopped_bonus = np.where(
             np.logical_and(reached_all, np.logical_and(zero_ang_mask, zero_vel_mask)),
@@ -658,7 +667,9 @@ class VBotSection001Env(NpEnv):
         # 持续停留奖励：每步在目标区域内就给奖励
         stay_in_zone_reward = np.where(reached_all, 3.0, 0.0)
         # 到达后显式速度惩罚：强烈的「刹车」信号
-        reached_speed_penalty = np.where(reached_all, 5.0 * np.square(speed_total), 0.0)
+        reached_speed_penalty = np.where(reached_all, 15.0 * np.square(speed_total), 0.0)
+        # 走出圆圈惩罚：一旦进入过圆圈又走出去，给强负奖励
+        leave_zone_penalty = np.where(left_zone, 30.0, 0.0)
 
         # ===== 综合奖励 =====
         reward = np.where(
@@ -683,6 +694,7 @@ class VBotSection001Env(NpEnv):
                 1.5 * tracking_lin_vel
                 + 0.3 * tracking_ang_vel
                 + approach_reward
+                - leave_zone_penalty
                 - 2.0 * lin_vel_z_penalty
                 - 0.05 * ang_vel_xy_penalty
                 - 0.5 * orientation_penalty

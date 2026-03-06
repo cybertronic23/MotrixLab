@@ -220,8 +220,8 @@ class VBotSection001Env(NpEnv):
         root_pos = self._body.get_pose(state.data)[:, :2]
         distance_to_target = np.linalg.norm(pose_commands[:, :2] - root_pos, axis=1)
         
-        damping_radius = 0.5   # 开始衰减的半径
-        stop_radius = 0.15     # 完全停止的半径
+        damping_radius = 2.0   # 开始衰减的半径（与速度命令减速区对齐）
+        stop_radius = 0.3      # 完全停止的半径（与 position_threshold 对齐）
         action_damp_factor = np.clip(
             (distance_to_target - stop_radius) / (damping_radius - stop_radius), 0.0, 1.0
         )
@@ -249,7 +249,7 @@ class VBotSection001Env(NpEnv):
         # PD控制器：tau = kp * (target - current) - kv * vel
         kp = 80.0   # 位置增益（与 Go1 locomotion 一致）
         kv_base = 2.0    # 基础速度增益
-        kv_stop = 8.0    # 停止时速度增益（更强的减速阻尼）
+        kv_stop = 10.0   # 停止时速度增益（更强的减速阻尼）
         
         # 在目标区域内，增大kv以提供更强的关节速度阻尼，帮助刹车
         if action_damp_factor is not None:

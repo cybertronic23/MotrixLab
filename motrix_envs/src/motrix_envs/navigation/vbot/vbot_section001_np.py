@@ -215,13 +215,29 @@ class VBotSection001Env(NpEnv):
                 (1.0 - self.action_filter_alpha) * state.info["filtered_actions"]
             )
         
+        # === 动作衰减：在目标区域内逐步将动作归零，物理层面强制停止 ===
+        pose_commands = state.info["pose_commands"]
+        root_pos = self._body.get_pose(state.data)[:, :2]
+        distance_to_target = np.linalg.norm(pose_commands[:, :2] - root_pos, axis=1)
+        
+        damping_radius = 0.5   # 开始衰减的半径
+        stop_radius = 0.15     # 完全停止的半径
+        action_damp_factor = np.clip(
+            (distance_to_target - stop_radius) / (damping_radius - stop_radius), 0.0, 1.0
+        )
+        # 衰减后的动作：越靠近圆心，动作越接近零
+        state.info["filtered_actions"] = state.info["filtered_actions"] * action_damp_factor[:, np.newaxis]
+        
         state.info["current_actions"] = state.info["filtered_actions"]
+        
+        # 将距离信息保存到 info 中，供 _compute_torques 使用
+        state.info["_action_damp_factor"] = action_damp_factor
 
-        state.data.actuator_ctrls = self._compute_torques(state.info["filtered_actions"], state.data)
+        state.data.actuator_ctrls = self._compute_torques(state.info["filtered_actions"], state.data, action_damp_factor)
         
         return state
     
-    def _compute_torques(self, actions, data):
+    def _compute_torques(self, actions, data, action_damp_factor=None):
         """计算PD控制力矩（VBot使用motor执行器，需要力矩控制）"""
         action_scaled = actions * self._cfg.control_config.action_scale
         target_pos = self.default_angles + action_scaled
@@ -232,7 +248,15 @@ class VBotSection001Env(NpEnv):
         
         # PD控制器：tau = kp * (target - current) - kv * vel
         kp = 80.0   # 位置增益（与 Go1 locomotion 一致）
-        kv = 2.0    # 速度增益（1.0太低不稳、6.0太高过阻尼，2.0为平衡点）
+        kv_base = 2.0    # 基础速度增益
+        kv_stop = 8.0    # 停止时速度增益（更强的减速阻尼）
+        
+        # 在目标区域内，增大kv以提供更强的关节速度阻尼，帮助刹车
+        if action_damp_factor is not None:
+            # action_damp_factor: 1.0=远离目标(正常), 0.0=在目标中心(强阻尼)
+            kv = kv_base + (kv_stop - kv_base) * (1.0 - action_damp_factor[:, np.newaxis])
+        else:
+            kv = kv_base
         
         pos_error = target_pos - current_pos
         torques = kp * pos_error - kv * current_vel
@@ -659,13 +683,13 @@ class VBotSection001Env(NpEnv):
         # 完全停稳奖励：速度和角速度都接近零
         fully_stopped_bonus = np.where(
             np.logical_and(reached_all, np.logical_and(zero_ang_mask, zero_vel_mask)),
-            10.0, 0.0
+            20.0, 0.0
         )
         # 基础停止奖励：速度越小奖励越高
-        stop_base = 3 * (0.8 * np.exp(-((speed_xy / 0.15)**2)) + 1.2 * np.exp(-((np.abs(gyro[:, 2]) / 0.08)**4)))
+        stop_base = 5 * (0.8 * np.exp(-((speed_xy / 0.15)**2)) + 1.2 * np.exp(-((np.abs(gyro[:, 2]) / 0.08)**4)))
         stop_bonus = np.where(reached_all, stop_base + fully_stopped_bonus, 0.0)
         # 持续停留奖励：每步在目标区域内就给奖励
-        stay_in_zone_reward = np.where(reached_all, 3.0, 0.0)
+        stay_in_zone_reward = np.where(reached_all, 5.0, 0.0)
         # 到达后显式速度惩罚：强烈的「刹车」信号
         reached_speed_penalty = np.where(reached_all, 15.0 * np.square(speed_total), 0.0)
         # 走出圆圈惩罚：一旦进入过圆圈又走出去，给强负奖励

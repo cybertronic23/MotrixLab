@@ -736,41 +736,41 @@ class VBotSection001Env(NpEnv):
         cfg: VBotSection01EnvCfg = self._cfg
         num_envs = data.shape[0]
         
-        # 在高台中央小范围内随机生成位置
-        # X, Y: 在spawn_center周围 ±spawn_range 范围内随机
-        random_xy = np.random.uniform(
-            low=-self.spawn_range,
-            high=self.spawn_range,
+        # === 径向生成（Radial Spawn）：将机器狗放置在圆盘边缘的白色剪头处 ===
+        # R = spawn_radius (5.4m), 角度 theta 随机 [0, 2pi]
+        spawn_radius = getattr(cfg.init_state, "spawn_radius", 5.4)
+        theta = np.random.uniform(0, 2 * np.pi, size=num_envs)
+        
+        # 基础坐标 (x, y)
+        spawn_x = spawn_radius * np.cos(theta)
+        spawn_y = spawn_radius * np.sin(theta)
+        
+        # 添加微小随机抖动（按配置的 pos_randomization_range）
+        random_jitter = np.random.uniform(
+            low=cfg.init_state.pos_randomization_range[:2],
+            high=cfg.init_state.pos_randomization_range[2:],
             size=(num_envs, 2)
         )
-        robot_init_xy = self.spawn_center[:2] + random_xy  # [num_envs, 2]
-        terrain_heights = np.full(num_envs, self.spawn_center[2], dtype=np.float32)  # 使用配置的高度
-        
-        
-        # 组合XYZ坐标
-        robot_init_pos = robot_init_xy  # [num_envs, 2]
-        robot_init_xyz = np.column_stack([robot_init_xy, terrain_heights])  # [num_envs, 3]
+        robot_init_xy = np.column_stack([spawn_x, spawn_y]) + random_jitter
+        terrain_heights = np.full(num_envs, cfg.init_state.pos[2], dtype=np.float32)
+        robot_init_xyz = np.column_stack([robot_init_xy, terrain_heights])
         
         dof_pos = np.tile(self._init_dof_pos, (num_envs, 1))
         dof_vel = np.tile(self._init_dof_vel, (num_envs, 1))
         
-        # 设置 base 的 XYZ位置（DOF 3-5）
-        dof_pos[:, 3:6] = robot_init_xyz  # [x, y, z] 随机生成的位置
+        # 设置 base 的 XYZ 位置（DOF 3-5）
+        dof_pos[:, 3:6] = robot_init_xyz
         
-        target_offset = np.random.uniform(
-            low=cfg.commands.pose_command_range[:2],
-            high=cfg.commands.pose_command_range[3:5],
-            size=(num_envs, 2)
-        )
-        target_positions = robot_init_pos + target_offset
+        # 设置基础朝向：面向圆心 (0, 0)
+        # 朝向角 Yaw = theta + pi
+        init_yaw = theta + np.pi
+        for i in range(num_envs):
+            # 将 Euler 角转为四元数并存入 dof_pos (DOF 6-10 为 quat)
+            quat = self._euler_to_quat(0, 0, init_yaw[i])
+            dof_pos[i, self._base_quat_start:self._base_quat_end] = quat
         
-        target_headings = np.random.uniform(
-            low=cfg.commands.pose_command_range[2],
-            high=cfg.commands.pose_command_range[5],
-            size=(num_envs, 1)
-        )
-        
-        pose_commands = np.concatenate([target_positions, target_headings], axis=1)
+        # 目标位置固定为圆心 (0, 0, 0)
+        pose_commands = np.zeros((num_envs, 3), dtype=np.float32)
         
         dof_pos = self._normalize_quaternion_dofs(dof_pos)
 
@@ -804,11 +804,11 @@ class VBotSection001Env(NpEnv):
         position_error = target_position - robot_position
         distance_to_target = np.linalg.norm(position_error, axis=1)
         
-        position_threshold = 1.0  # 与 update_state 保持一致
+        position_threshold = 0.3  # 与 update_state 保持一致
         reached_all = distance_to_target < position_threshold
         
         # 减速区逻辑（与 update_state 一致）
-        decel_outer = 3.0
+        decel_outer = 2.0
         decel_inner = position_threshold
         speed_scale = np.clip((distance_to_target - decel_inner) / (decel_outer - decel_inner), 0.0, 1.0)
         speed_scale = np.where(reached_all, 0.0, speed_scale)

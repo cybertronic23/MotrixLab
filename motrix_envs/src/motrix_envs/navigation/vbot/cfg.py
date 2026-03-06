@@ -362,9 +362,12 @@ class VBotSection001EnvCfg(VBotStairsEnvCfg):
     max_episode_steps: int = 4000  # 拉长一倍：从2000步增加到4000步
     @dataclass
     class InitState:
-        # 起始位置：随机化范围内生成
-        pos = [0.0, -2.4, 0.5]  # 中心位置
-        pos_randomization_range = [-0.5, -0.5, 0.5, 0.5]  # X±0.5m, Y±0.5m随机
+        # 起始位置基准：圆盘中心
+        pos = [0.0, 0.0, 0.5]  
+        # 径向生成半径：白色箭头所在位置
+        spawn_radius = 5.4
+        # 随机抖动范围：在箭头位置附近的小随机
+        pos_randomization_range = [-0.1, -0.1, 0.1, 0.1]
 
         default_joint_angles = {
             "FR_hip_joint": -0.0,
@@ -382,14 +385,8 @@ class VBotSection001EnvCfg(VBotStairsEnvCfg):
         }
     @dataclass
     class Commands:
-        # 目标位置：缩短距离，固定目标点
-        # 起始位置Y=-2.4, 目标Y=3.6, 距离=6米（与vbot_np相近）
-        # pose_command_range = [0.0, 3.6, 0.0, 0.0, 3.6, 0.0]
-        # 原始配置（已注释）：
-        # 目标位置：固定在终止角范围远端（完全无随机化）
-        # 固定目标点: X=0, Y=10.2, Z=2 (Z通过XML控制)
-        # 起始位置Y=-2.4, 目标Y=10.2, 距离=12.6米
-        pose_command_range = [0.0, 10.2, 0.0, 0.0, 10.2, 0.0]
+        # 目标位置固定在圆心 (0, 0, 0)
+        pose_command_range = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     @dataclass
     class ControlConfig:
         action_scale = 0.25

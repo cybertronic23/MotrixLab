@@ -1,0 +1,32 @@
+{
+  "python": "3.10.5 (v3.10.5:f377153967, Jun  6 2022, 12:36:10) [Clang 13.0.0 (clang-1300.0.29.30)]",
+  "platform": "macOS-26.2-arm64-arm-64bit",
+  "machine": "arm64",
+  "git_commit": "bdfe2ed2d70c167538c16b712bd45be8cd023fe3",
+  "versions": {
+    "motrix-envs": "0.4.0b1",
+    "motrixsim": "0.10.1",
+    "torch": "2.11.0",
+    "rsl-rl-lib": "4.0.1",
+    "tensorboard": "2.20.0",
+    "numpy": "2.2.6"
+  },
+  "cuda": false,
+  "mps": true,
+  "device": "mps",
+  "matrix_finite": true,
+  "policy_obs_shape": [
+    1,
+    49
+  ],
+  "value_obs_shape": [
+    1,
+    52
+  ],
+  "action_shape": [
+    12
+  ],
+  "action_scale": 0.1,
+  "finite_observation": true,
+  "finite_reward": true
+}

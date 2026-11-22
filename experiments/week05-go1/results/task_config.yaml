@@ -1,0 +1,60 @@
+task:
+  env: go1-walk-flat
+  rllib: rslrl
+  algo: ppo
+  train_backend: null
+num_envs: 128
+play_num_envs: 16
+seed: 42
+logging:
+  backend: tensorboard
+  interval: 100
+checkpoint:
+  interval: 100
+algo:
+  num_steps_per_env: 24
+  max_iterations: 500
+  obs_groups:
+    actor:
+      - policy
+    critic:
+      - value
+  actor:
+    class_name: MLPModel
+    hidden_dims:
+      - 512
+      - 256
+      - 128
+    activation: elu
+    obs_normalization: true
+    stochastic: true
+    init_noise_std: 0.5
+    noise_std_type: scalar
+    state_dependent_std: false
+  critic:
+    class_name: MLPModel
+    hidden_dims:
+      - 512
+      - 256
+      - 128
+    activation: elu
+    obs_normalization: true
+    stochastic: false
+  algorithm:
+    class_name: PPO
+    optimizer: adam
+    learning_rate: 0.0003
+    num_learning_epochs: 5
+    num_mini_batches: 4
+    schedule: adaptive
+    value_loss_coef: 1.0
+    clip_param: 0.2
+    use_clipped_value_loss: true
+    desired_kl: 0.01
+    entropy_coef: 0.001
+    gamma: 0.99
+    lam: 0.95
+    max_grad_norm: 1.0
+    normalize_advantage_per_mini_batch: false
+    rnd_cfg: null
+    symmetry_cfg: null

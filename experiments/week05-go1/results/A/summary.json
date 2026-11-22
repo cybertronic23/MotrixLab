@@ -1,0 +1,21 @@
+{
+  "action_scale": 0.1,
+  "ctrl_dt": 0.02,
+  "policy": "/Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/runs/go1-walk-flat/rslrl/torch/ppo/26-11-23_00-48-33-345874/checkpoints/latest.pt",
+  "checkpoint_sha256": "2c4e6a8f545b02827b1da8f013edf1fd2e48f9086dbe9391030bea28f5a2e10c",
+  "seed": 42,
+  "num_envs": 1,
+  "device": "mps",
+  "observation_space": "ObsSpace(policy=Box(-inf, inf, (49,), float32), value=Box(-inf, inf, (52,), float32))",
+  "action_space": "Box([ -8.629999 -15.859999 -10.180001  -8.629999 -15.859999 -10.180001\n  -8.629999 -15.859999 -10.180001  -8.629999 -15.859999 -10.180001], [ 8.629999 36.01      9.119999  8.629999 36.01      9.119999  8.629999\n 36.01      9.119999  8.629999 36.01      9.119999], (12,), float32)",
+  "recorded_video_seconds": 10.0,
+  "steps": 500,
+  "simulated_seconds": 10.0,
+  "mean_forward_velocity": 0.4802152472413145,
+  "std_forward_velocity": 0.08536639176501225,
+  "mean_lateral_velocity": -0.016189277878613212,
+  "min_base_height": 0.2546292841434479,
+  "max_base_height": 0.29908549785614014,
+  "terminations": 0,
+  "truncations": 0
+}

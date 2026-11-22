@@ -1,0 +1,3 @@
+# Keep this small experiment's screenshots and replay clips in Git.
+*.png -filter -diff -merge -text
+*.mp4 -filter -diff -merge -text

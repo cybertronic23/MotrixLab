@@ -1,0 +1,54 @@
+2026-11-22T16:52:42.796410Z  WARN mjcf_parser: These fields are not support yet, will be ignored:
+In file: /Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/motrix_robots/src/motrix_robots/assets/go1/go1.xml :
+  option@integrator at line: 4
+  flag@eulerdamp at line: 5
+2026-11-22T16:52:42.796639Z  WARN mjcf2msd::compile::body::camera: Camera mode 'trackcom' is not supported yet, fallback to 'track'
+2026-11-22T16:52:42.796660Z  WARN mjcf2msd::compile::body::camera: Camera mode 'trackcom' is not supported yet, fallback to 'track'
+2026-11-22T16:52:42.796666Z  WARN mjcf2msd::compile::body::camera: Camera mode 'trackcom' is not supported yet, fallback to 'track'
+2026-11-22T16:52:42.846519Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 0 to CPU core 0
+2026-11-22T16:52:42.846561Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 6 to CPU core 6
+2026-11-22T16:52:42.846524Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 1 to CPU core 1
+2026-11-22T16:52:42.846545Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 2 to CPU core 2
+2026-11-22T16:52:42.846553Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 5 to CPU core 5
+2026-11-22T16:52:42.846615Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 9 to CPU core 9
+2026-11-22T16:52:42.846624Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 7 to CPU core 7
+2026-11-22T16:52:42.846598Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 8 to CPU core 8
+2026-11-22T16:52:42.846622Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 3 to CPU core 3
+2026-11-22T16:52:42.846622Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 4 to CPU core 4
+Motphys profiler initialized: disabled
+2026-11-22T16:52:42.920283Z  WARN bevy_asset::server::loaders: Duplicate AssetLoader registered for Asset type `bevy_image::image::Image` with extensions `["png", "jpg", "jpeg"]`. Loader must be specified in a .meta file in order to load assets of this type with these extensions.
+Failed to create CudaContext: Could not load cuda runtime library
+ACTUAL_REPLAY_CONFIG {"action_scale": 0.05, "ctrl_dt": 0.02, "policy": "/Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/runs/go1-walk-flat/rslrl/torch/ppo/26-11-23_00-48-33-345874/checkpoints/latest.pt", "checkpoint_sha256": "2c4e6a8f545b02827b1da8f013edf1fd2e48f9086dbe9391030bea28f5a2e10c", "seed": 42, "num_envs": 1, "device": "mps", "observation_space": "ObsSpace(policy=Box(-inf, inf, (49,), float32), value=Box(-inf, inf, (52,), float32))", "action_space": "Box([-17.259998 -31.719997 -20.360003 -17.259998 -31.719997 -20.360003\n -17.259998 -31.719997 -20.360003 -17.259998 -31.719997 -20.360003], [17.259998 72.02     18.239998 17.259998 72.02     18.239998 17.259998\n 72.02     18.239998 17.259998 72.02     18.239998], (12,), float32)"}
+--------------------------------------------------------------------------------
+Resolved observation sets: 
+	 actor :  ['policy']
+	 critic :  ['value']
+--------------------------------------------------------------------------------
+Actor Model: MLPModel(
+  (obs_normalizer): EmpiricalNormalization()
+  (mlp): MLP(
+    (0): Linear(in_features=49, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=12, bias=True)
+  )
+)
+Critic Model: MLPModel(
+  (obs_normalizer): EmpiricalNormalization()
+  (mlp): MLP(
+    (0): Linear(in_features=52, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+FIRST_REPLAY_STEP {"step": 1, "local_velocity": [0.001049382844939828, 0.0028495718725025654, -0.09649871289730072], "upvector": [-3.088386802119203e-05, -0.00025129682035185397, 1.0], "base_position": [-0.9166514277458191, -3.872244119644165, 0.29905226826667786], "joint_position": [-0.005972857587039471, 0.8878442049026489, -1.7898821830749512, -0.0030790837481617928, 0.9039878249168396, -1.8049508333206177, 0.0008934354409575462, 0.8999588489532471, -1.7872183322906494, -0.0013947838451713324, 0.908812940120697, -1.7907575368881226], "default_angles": [0.0, 0.8999999761581421, -1.7999999523162842, 0.0, 0.8999999761581421, -1.7999999523162842, 0.0, 0.8999999761581421, -1.7999999523162842, 0.0, 0.8999999761581421, -1.7999999523162842], "actions": [-0.2290745973587036, -0.46143829822540283, 0.3852040469646454, -0.13301342725753784, 0.15786461532115936, -0.20493309199810028, 0.07279001176357269, 0.014149390161037445, 0.5152298808097839, -0.06779203563928604, 0.4059542417526245, 0.42940571904182434], "feet_contact": [false, false, false, false], "reward": 0.022973068058490753, "terminated": false, "truncated": false}
+2026-11-22T16:52:44.106691Z  WARN bevy_time: time_system did not receive the time from the render world! Calculations depending on the time may be incorrect.
+MEASURED_REPLAY_SUMMARY {"action_scale": 0.05, "ctrl_dt": 0.02, "policy": "/Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/runs/go1-walk-flat/rslrl/torch/ppo/26-11-23_00-48-33-345874/checkpoints/latest.pt", "checkpoint_sha256": "2c4e6a8f545b02827b1da8f013edf1fd2e48f9086dbe9391030bea28f5a2e10c", "seed": 42, "num_envs": 1, "device": "mps", "observation_space": "ObsSpace(policy=Box(-inf, inf, (49,), float32), value=Box(-inf, inf, (52,), float32))", "action_space": "Box([-17.259998 -31.719997 -20.360003 -17.259998 -31.719997 -20.360003\n -17.259998 -31.719997 -20.360003 -17.259998 -31.719997 -20.360003], [17.259998 72.02     18.239998 17.259998 72.02     18.239998 17.259998\n 72.02     18.239998 17.259998 72.02     18.239998], (12,), float32)", "recorded_video_seconds": 10.0, "steps": 500, "simulated_seconds": 10.0, "mean_forward_velocity": -0.012188751189270989, "std_forward_velocity": 0.03521234200568471, "mean_lateral_velocity": -0.0025970843533286827, "min_base_height": 0.2592880129814148, "max_base_height": 0.29905226826667786, "terminations": 0, "truncations": 0}
+Saved evidence: /Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/runs/week05-evidence/B

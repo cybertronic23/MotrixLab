@@ -1,0 +1,53 @@
+2026-11-22T16:52:10.332088Z  WARN mjcf_parser: These fields are not support yet, will be ignored:
+In file: /Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/motrix_robots/src/motrix_robots/assets/go1/go1.xml :
+  option@integrator at line: 4
+  flag@eulerdamp at line: 5
+2026-11-22T16:52:10.332373Z  WARN mjcf2msd::compile::body::camera: Camera mode 'trackcom' is not supported yet, fallback to 'track'
+2026-11-22T16:52:10.332395Z  WARN mjcf2msd::compile::body::camera: Camera mode 'trackcom' is not supported yet, fallback to 'track'
+2026-11-22T16:52:10.332400Z  WARN mjcf2msd::compile::body::camera: Camera mode 'trackcom' is not supported yet, fallback to 'track'
+2026-11-22T16:52:10.383633Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 0 to CPU core 0
+2026-11-22T16:52:10.383663Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 2 to CPU core 2
+2026-11-22T16:52:10.383688Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 8 to CPU core 8
+2026-11-22T16:52:10.383633Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 1 to CPU core 1
+2026-11-22T16:52:10.383651Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 6 to CPU core 6
+2026-11-22T16:52:10.383725Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 7 to CPU core 7
+Motphys profiler initialized: disabled
+2026-11-22T16:52:10.383723Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 9 to CPU core 9
+2026-11-22T16:52:10.383730Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 5 to CPU core 5
+2026-11-22T16:52:10.383728Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 4 to CPU core 4
+2026-11-22T16:52:10.383725Z  WARN motrix_utils::thread_pool::native: failed to bind Rayon worker 3 to CPU core 3
+2026-11-22T16:52:10.529118Z  WARN bevy_asset::server::loaders: Duplicate AssetLoader registered for Asset type `bevy_image::image::Image` with extensions `["png", "jpg", "jpeg"]`. Loader must be specified in a .meta file in order to load assets of this type with these extensions.
+Failed to create CudaContext: Could not load cuda runtime library
+ACTUAL_REPLAY_CONFIG {"action_scale": 0.1, "ctrl_dt": 0.02, "policy": "/Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/runs/go1-walk-flat/rslrl/torch/ppo/26-11-23_00-48-33-345874/checkpoints/latest.pt", "checkpoint_sha256": "2c4e6a8f545b02827b1da8f013edf1fd2e48f9086dbe9391030bea28f5a2e10c", "seed": 42, "num_envs": 1, "device": "mps", "observation_space": "ObsSpace(policy=Box(-inf, inf, (49,), float32), value=Box(-inf, inf, (52,), float32))", "action_space": "Box([ -8.629999 -15.859999 -10.180001  -8.629999 -15.859999 -10.180001\n  -8.629999 -15.859999 -10.180001  -8.629999 -15.859999 -10.180001], [ 8.629999 36.01      9.119999  8.629999 36.01      9.119999  8.629999\n 36.01      9.119999  8.629999 36.01      9.119999], (12,), float32)"}
+--------------------------------------------------------------------------------
+Resolved observation sets: 
+	 actor :  ['policy']
+	 critic :  ['value']
+--------------------------------------------------------------------------------
+Actor Model: MLPModel(
+  (obs_normalizer): EmpiricalNormalization()
+  (mlp): MLP(
+    (0): Linear(in_features=49, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=12, bias=True)
+  )
+)
+Critic Model: MLPModel(
+  (obs_normalizer): EmpiricalNormalization()
+  (mlp): MLP(
+    (0): Linear(in_features=52, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+FIRST_REPLAY_STEP {"step": 1, "local_velocity": [0.002098498633131385, 0.005701122339814901, -0.09489879757165909], "upvector": [-6.179283082019538e-05, -0.0005025932914577425, 0.9999999403953552], "base_position": [-0.9166347980499268, -3.872218608856201, 0.29908549785614014], "joint_position": [-0.012980194762349129, 0.874504029750824, -1.7755526304244995, -0.007195374928414822, 0.9088935852050781, -1.8102236986160278, 0.0016641938127577305, 0.8991159796714783, -1.7704020738601685, -0.00320477900095284, 0.9181318283081055, -1.7776825428009033], "default_angles": [0.0, 0.8999999761581421, -1.7999999523162842, 0.0, 0.8999999761581421, -1.7999999523162842, 0.0, 0.8999999761581421, -1.7999999523162842, 0.0, 0.8999999761581421, -1.7999999523162842], "actions": [-0.2290745973587036, -0.46143829822540283, 0.3852040469646454, -0.13301342725753784, 0.15786461532115936, -0.20493309199810028, 0.07279001176357269, 0.014149390161037445, 0.5152298808097839, -0.06779203563928604, 0.4059542417526245, 0.42940571904182434], "feet_contact": [false, false, false, false], "reward": 0.022866228595376015, "terminated": false, "truncated": false}
+MEASURED_REPLAY_SUMMARY {"action_scale": 0.1, "ctrl_dt": 0.02, "policy": "/Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/runs/go1-walk-flat/rslrl/torch/ppo/26-11-23_00-48-33-345874/checkpoints/latest.pt", "checkpoint_sha256": "2c4e6a8f545b02827b1da8f013edf1fd2e48f9086dbe9391030bea28f5a2e10c", "seed": 42, "num_envs": 1, "device": "mps", "observation_space": "ObsSpace(policy=Box(-inf, inf, (49,), float32), value=Box(-inf, inf, (52,), float32))", "action_space": "Box([ -8.629999 -15.859999 -10.180001  -8.629999 -15.859999 -10.180001\n  -8.629999 -15.859999 -10.180001  -8.629999 -15.859999 -10.180001], [ 8.629999 36.01      9.119999  8.629999 36.01      9.119999  8.629999\n 36.01      9.119999  8.629999 36.01      9.119999], (12,), float32)", "recorded_video_seconds": 10.0, "steps": 500, "simulated_seconds": 10.0, "mean_forward_velocity": 0.4802152472413145, "std_forward_velocity": 0.08536639176501225, "mean_lateral_velocity": -0.016189277878613212, "min_base_height": 0.2546292841434479, "max_base_height": 0.29908549785614014, "terminations": 0, "truncations": 0}
+Saved evidence: /Users/silenceland/Documents/workspace/emboided-ai/MotrixLab/runs/week05-evidence/A
